@@ -47,22 +47,23 @@ ruby_block 'Removing unhealthy nodes' do
   block do
     sleep(60)
     command_status_of_nodes="echo \"rs.status().members\" | mongo --quiet | grep health\\\" | awk ' {print $3} '"
-    status_of_nodes=`#{command_status_of_nodes}`.delete!("\n").delete!(",")
-    nodes=status_of_nodes.split("")
-    for index_node in 0..nodes.size-1 do
-      if nodes[index_node] != "1"
-        Chef::Log.info "node index unhealthy " + index_node.to_s
-        command="echo \"rs.status().members[#{index_node}]['name']\" | mongo --quiet"
-        unhealthy_node=`#{command}`.delete!("\n")
-        Chef::Log.info "deleting unhealthy node " + unhealthy_node
-        system("echo 'rs.remove(\"#{unhealthy_node}\")' | mongo")
-      else
-        Chef::Log.info "node index healthy "  + index_node.to_s
-        command="echo \"rs.status().members[#{index_node}]['name']\" | mongo --quiet"
-        healthy_node=`#{command}`.delete!("\n")
-        Chef::Log.info "healthy node " + healthy_node
+    if command_status_of_nodes != nil
+      status_of_nodes=`#{command_status_of_nodes}`.delete!("\n").delete!(",")
+      nodes=status_of_nodes.split("")
+      for index_node in 0..nodes.size-1 do
+        if nodes[index_node] != "1"
+          Chef::Log.info "node index unhealthy " + index_node.to_s
+          command="echo \"rs.status().members[#{index_node}]['name']\" | mongo --quiet"
+          unhealthy_node=`#{command}`.delete!("\n")
+          Chef::Log.info "deleting unhealthy node " + unhealthy_node
+          system("echo 'rs.remove(\"#{unhealthy_node}\")' | mongo")
+        else
+          Chef::Log.info "node index healthy "  + index_node.to_s
+          command="echo \"rs.status().members[#{index_node}]['name']\" | mongo --quiet"
+          healthy_node=`#{command}`.delete!("\n")
+          Chef::Log.info "healthy node " + healthy_node
+        end
       end
     end
-
   end
 end
