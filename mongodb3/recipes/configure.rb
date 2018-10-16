@@ -20,6 +20,14 @@ ruby_block 'Configuring_replica_set' do
         Chef::Log.info "Initializing replica set"
         system("echo \"rs.initiate()\" | mongo")
         system("aws opsworks --region us-east-1 update-layer --layer-id #{layer_id} --custom-json " + '"{\"is_initiated\":\"yes\"}"' )
+        master_privateip="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].PrivateIp' --output text"
+        master_instanceid="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].InstanceId' --output text"
+        master_stackid="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].StackId' --output text"
+        system("echo \"HOSTNAME=#{master_node}\" > mongo_master.dat")
+        system("echo \"IP=#{master_privateip}\" >> mongo_master.dat")
+        system("echo \"IP=#{master_instanceid}\" >> mongo_master.dat")
+        system("echo \"IP=#{master_stackid}\" >> mongo_master.dat")
+        system("aws s3 cp mongo_master.dat s3://migration-tests-mongo/ --region us-east-1")
       end
     end
   end
