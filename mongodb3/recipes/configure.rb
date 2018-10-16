@@ -14,8 +14,7 @@ end
 ruby_block 'Configuring_replica_set' do
   block do
     if "#{node['is_initiated']}" == "no"
-      master_node_command="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].Hostname'"
-      master_node=`#{master_node_command}`.delete!("\n").delete!("\"")
+      master_node="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].Hostname' --output text"
       if master_node == this_instance["hostname"]
         Chef::Log.info "Initializing replica set"
         system("echo \"rs.initiate()\" | mongo")
@@ -27,7 +26,7 @@ ruby_block 'Configuring_replica_set' do
         system("echo \"IP=#{master_privateip}\" >> mongo_master.dat")
         system("echo \"IP=#{master_instanceid}\" >> mongo_master.dat")
         system("echo \"IP=#{master_stackid}\" >> mongo_master.dat")
-        system("aws s3 cp mongo_master.dat s3://migration-tests-mongo/ --region us-east-1")
+        system("aws s3 cp mongo_master.dat s3://migration-tests-mongo/")
       end
     end
   end
