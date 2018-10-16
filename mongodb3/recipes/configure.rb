@@ -13,24 +13,27 @@ end
 # TODO Get the node status, and exist until they all are in online state
 ruby_block 'Configuring_replica_set' do
   block do
-    if "#{node['is_initiated']}" == "no"
-      master_node=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].Hostname' --output text`.delete!("\n").delete!("\"")
+    Chef::Log.info "Replica configured == " + node['is_initiated']
+    if node['is_initiated'] == "no"
+      master_node=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].Hostname'`.delete!("\n").delete!("\"")
+      Chef::Log.info "master node " + master_node
       if master_node == this_instance["hostname"]
         Chef::Log.info "Initializing replica set"
         system("echo \"rs.initiate()\" | mongo")
         system("aws opsworks --region us-east-1 update-layer --layer-id #{layer_id} --custom-json " + '"{\"is_initiated\":\"yes\"}"' )
-        master_privateip=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].PrivateIp' --output text`.delete!("\n").delete!("\"")
-        master_instanceid=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].InstanceId' --output text`.delete!("\n").delete!("\"")
-        master_stackid=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].StackId' --output text`.delete!("\n").delete!("\"")
+        master_privateip=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].PrivateIp'`.delete!("\n").delete!("\"")
+        master_instanceid=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].InstanceId'`.delete!("\n").delete!("\"")
+        master_stackid=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].StackId'`.delete!("\n").delete!("\"")
         system("echo \"HOSTNAME=#{master_node}\" > mongo_master.dat")
-        system("echo \"IP=#{master_privateip}\" >> mongo_master.dat")
-        system("echo \"IP=#{master_instanceid}\" >> mongo_master.dat")
-        system("echo \"IP=#{master_stackid}\" >> mongo_master.dat")
+        system("echo \"PRIVATE_IP=#{master_privateip}\" >> mongo_master.dat")
+        system("echo \"INSTANCE_ID=#{master_instanceid}\" >> mongo_master.dat")
+        system("echo \"STACK_ID=#{master_stackid}\" >> mongo_master.dat")
         system("aws s3 cp mongo_master.dat s3://migration-tests-mongo/")
       end
     end
   end
 end
+
 
 ruby_block 'Adding_slaves' do
   block do
