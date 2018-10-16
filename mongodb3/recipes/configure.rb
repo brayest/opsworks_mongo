@@ -14,14 +14,14 @@ end
 ruby_block 'Configuring_replica_set' do
   block do
     if "#{node['is_initiated']}" == "no"
-      master_node="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].Hostname' --output text"
+      master_node=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].Hostname' --output text`.delete!("\n").delete!("\"")
       if master_node == this_instance["hostname"]
         Chef::Log.info "Initializing replica set"
         system("echo \"rs.initiate()\" | mongo")
         system("aws opsworks --region us-east-1 update-layer --layer-id #{layer_id} --custom-json " + '"{\"is_initiated\":\"yes\"}"' )
-        master_privateip="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].PrivateIp' --output text"
-        master_instanceid="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].InstanceId' --output text"
-        master_stackid="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].StackId' --output text"
+        master_privateip=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].PrivateIp' --output text`.delete!("\n").delete!("\"")
+        master_instanceid=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].InstanceId' --output text`.delete!("\n").delete!("\"")
+        master_stackid=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].StackId' --output text`.delete!("\n").delete!("\"")
         system("echo \"HOSTNAME=#{master_node}\" > mongo_master.dat")
         system("echo \"IP=#{master_privateip}\" >> mongo_master.dat")
         system("echo \"IP=#{master_instanceid}\" >> mongo_master.dat")
@@ -45,9 +45,8 @@ end
 
 ruby_block 'Removing unhealthy nodes' do
   block do
-    sleep(60)
-    command_status_of_nodes="echo \"rs.status().members\" | mongo --quiet | grep health\\\" | awk ' {print $3} '"
-    if command_status_of_nodes != nil
+    command_status_of_nodes="echo \"rs.status().members\" | mongo --quiet | grep health\\\" | awk '{print $3}'"
+    if `#{command_status_of_nodes}` != ""
       status_of_nodes=`#{command_status_of_nodes}`.delete!("\n").delete!(",")
       nodes=status_of_nodes.split("")
       for index_node in 0..nodes.size-1 do
