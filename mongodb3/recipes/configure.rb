@@ -47,35 +47,19 @@ ruby_block 'Configuring_replica_set' do
         system("echo \"INSTANCE_ID=#{master_instanceid}\" >> mongo_master.dat")
         system("echo \"STACK_ID=#{master_stackid}\" >> mongo_master.dat")
         system("aws s3 cp mongo_master.dat s3://#{node['config_bucket']}/")
-        record_exist=`aws route53 list-resource-record-sets --hosted-zone-id #{node["HostedZoneId"]} | grep #{node['Name']}.#{node['Domain']} | wc -l`.delete!("\n")
+        record_exist=`aws route53 list-resource-record-sets --hosted-zone-id #{node['HostedZoneId']} | grep #{node['Name']}.#{node['Domain']} | wc -l`.delete!("\n")
         Chef::Log.info "Checking DNS record " + record_exist
         if record_exist == "0"
           Chef::Log.info "Creating DNS Record"
-          system("echo \"[\" > paramtemp.json")
-          # paramHash = {
-          #     "HostedZoneId" => "#{node['HostedZoneId']}",
-          #     "Comment" => "Zone for #{node['Name']}",
-          #     "PrivateIp" => "#{master_privateip}",
-          #     "HostName" => "#{node['Name']}",
-          #     "Domain" => "#{node['Domain']}"
-          # }
-          paramHash = {
-              "ParameterKey" => "HostedZoneId",
-              "ParameterValue" => "#{node['HostedZoneId']}"
-          }
-          File.open("paramtemp.json","w") do |f|
-            f.write(paramHash.to_json)
-          end
-          system("echo \"]\" >> paramtemp.json")
-          system("cat paramtemp.json")
-          system("aws cloudformation create-stack --stack-name mongo --template-body file:///tmp/dns-record.yml --parameters file://paramtemp.json --region us-west-2")
+          system("aws cloudformation create-stack --stack-name mongo --template-body file:///tmp/dns-record.yml --parameters \\
+          ParameterKey=HostedZoneId,ParameterValue=#{node['HostedZoneId']} ParameterKey=Comment,ParameterValue=#{node['Name']} \\
+          ParameterKey=PrivateIp,ParameterValue=#{master_privateip} ParameterKey=HostName,ParameterValue=#{node['Name']} \\
+          ParameterKey=Domain,ParameterValue=#{node['Domain']} --region us-west-2")
         end
       end
     end
   end
 end
-
-{"HostedZoneId":"ZT5S3SIALOJNV","Comment":"Zone for timekucadre","PrivateIp":"10.41.3.7","HostName":"timekucadre","Domain":"mongo.internal"}
 
 ruby_block 'Adding_slaves' do
   block do
