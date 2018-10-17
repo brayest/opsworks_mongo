@@ -51,10 +51,16 @@ ruby_block 'Configuring_replica_set' do
         Chef::Log.info "Checking DNS record " + record_exist
         if record_exist == "0"
           Chef::Log.info "Creating DNS Record"
-          system("aws cloudformation create-stack --stack-name mongo --template-body file:///tmp/dns-record.yml --parameters \\
+          system("aws cloudformation create-stack --stack-name #{node['Name']}-mongoDNS --template-body file:///tmp/dns-record.yml --parameters \\
           ParameterKey=HostedZoneId,ParameterValue=#{node['HostedZoneId']} ParameterKey=Comment,ParameterValue=#{node['Name']} \\
           ParameterKey=PrivateIp,ParameterValue=#{master_privateip} ParameterKey=HostName,ParameterValue=#{node['Name']} \\
-          ParameterKey=Domain,ParameterValue=#{node['Domain']} --region us-west-2")
+          ParameterKey=Domain,ParameterValue=#{node['Domain']} --region #{node['Region']}")
+        else
+          Chef::Log.info "Updating DNS Record"
+          system("aws cloudformation update-stack --stack-name #{node['Name']}-mongoDNS --template-body file:///tmp/dns-record.yml --parameters \\
+          ParameterKey=HostedZoneId,ParameterValue=#{node['HostedZoneId']} ParameterKey=Comment,ParameterValue=#{node['Name']} \\
+          ParameterKey=PrivateIp,ParameterValue=#{master_privateip} ParameterKey=HostName,ParameterValue=#{node['Name']} \\
+          ParameterKey=Domain,ParameterValue=#{node['Domain']} --region #{node['Region']}")
         end
       end
     end
