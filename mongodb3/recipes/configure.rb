@@ -20,7 +20,7 @@ ruby_block 'Configuring_replica_set' do
       if master_node == this_instance["hostname"]
         Chef::Log.info "Initializing replica set"
         system("echo \"rs.initiate()\" | mongo")
-        system("aws opsworks --region us-east-1 update-layer --layer-id #{layer_id} --custom-json " + '"{\"is_initiated\":\"yes\"}"' )
+        system("aws opsworks --region us-east-1 update-layer --layer-id #{layer_id} --custom-json " + '"{\"is_initiated\":\"yes\", \"HostedZoneId\":\"#{node["HostedZoneId"]}\", \"Name\":\"#{node["Name"]}\"}"' )
         master_privateip=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].PrivateIp'`.delete!("\n").delete!("\"")
         master_instanceid=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].InstanceId'`.delete!("\n").delete!("\"")
         master_stackid=`aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].StackId'`.delete!("\n").delete!("\"")
@@ -28,7 +28,11 @@ ruby_block 'Configuring_replica_set' do
         system("echo \"PRIVATE_IP=#{master_privateip}\" >> mongo_master.dat")
         system("echo \"INSTANCE_ID=#{master_instanceid}\" >> mongo_master.dat")
         system("echo \"STACK_ID=#{master_stackid}\" >> mongo_master.dat")
-        system("aws s3 cp mongo_master.dat s3://migration-tests-mongo/")
+        system("aws s3 cp mongo_master.dat s3://#{node['config_bucket']}/")
+        record_exist=`aws route53 list-resource-record-sets --hosted-zone-id #{node["HostedZoneId"]} | grep #{node["Name"]}.#{node['Domain']} | wc -l`.delete!("\n").delete!("\"")
+        if record_exist == "1":
+          Chef::Log.info "Creating DNS Record"
+        end
       end
     end
   end

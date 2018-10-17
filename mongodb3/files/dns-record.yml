@@ -1,0 +1,26 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Domain entry for Mongo Cluster'
+
+Parameters:
+  HostedZoneId:
+    Type: String
+  Comment:
+    Type: String
+  PrivateIp:
+    Type: String
+  HostName:
+    Type: String
+  Domain:
+    Type: String
+
+Resources:
+  MongoDNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Comment: !Ref Comment
+      Name: !Sub "${HostName}.${Domain}."
+      Type: A
+      TTL: 300
+      ResourceRecords:
+        - !Ref PrivateIp
