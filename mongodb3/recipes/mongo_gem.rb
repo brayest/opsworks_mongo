@@ -1,4 +1,8 @@
 # install the mongo ruby gem at compile time to make it globally available
+gem_package 'aws-sdk' do
+  action :nothing
+end.run_action(:install)
+Chef::Log.warn("Installing AWS SDK")
 chef_gem 'mongo' do
   action :install
 end

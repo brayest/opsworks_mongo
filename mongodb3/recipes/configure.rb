@@ -13,7 +13,6 @@ client = Mongo::Client.new([ '127.0.0.1' ], :database => "admin" ,:connect => "d
 
 rs_members = []
 rs_member_ips = []
-rs_options = {}
 i = 0
 search("aws_opsworks_instance", "layer_ids:#{layer_id}").each do |instance|
   i += 1
