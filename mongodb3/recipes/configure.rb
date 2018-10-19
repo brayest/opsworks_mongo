@@ -1,6 +1,9 @@
 package 'awscli'
+include_recipe "mongodb3::mongo_gem"
+
 require 'json'
-include_recipe "mongodb::mongo_gem"
+require 'mongo'
+require 'bson'
 
 # Obtaning mongo instnaces
 this_instance = search("aws_opsworks_instance", "self:true").first
@@ -21,16 +24,19 @@ end
 # TODO Get the node status, and exist until they all are in online state
 ruby_block 'Configuring_replica_set' do
   block do
-    if "#{node['is_initiated']}" == "no"
+    Chef::Log.info "Checking configuration"
+    if "#{node['is_initiated']}" != ""
       master_node_command="aws opsworks --region us-east-1 describe-instances --layer-id #{layer_id} --query 'Instances[0].Hostname'"
       master_node=`#{master_node_command}`.delete!("\n").delete!("\"")
+      Chef::Log.info "Checking hostname " + master_node
       if master_node == this_instance["hostname"]
         Chef::Log.info "Initializing replica set"
-        cmd = BSON::OrderedHash.new
+        cmd = {}
         cmd['replSetInitiate'] = {
-            "_id" => "#{node['replSetName']}",
+            "_id" => "#{node['mongodb3']['config']['mongod']['replication']['replSetName']}",
             "members" => rs_members
         }
+        client.database.command(cmd)
         system("aws opsworks --region us-east-1 update-layer --layer-id #{layer_id} --custom-json " + '"{\"is_initiated\":\"yes\"}"' )
       end
     end
