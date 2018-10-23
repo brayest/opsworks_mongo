@@ -81,8 +81,8 @@ ruby_block 'Configuring_replica_set' do
             sleep(30)
           end
         end
-        
-        for j in 0..host_names.size do
+
+        for j in 0..host_names.size-1 do
           resp = dns.change_resource_record_sets({
             change_batch: {
               changes: [
@@ -159,13 +159,13 @@ ruby_block 'Adding and removing members' do
 
         Chef::Log.info "Checking for new members"
         master_node_command.instances.each do |host|
-          host_name = "#{host}:27017"
+          host_name = "#{host.hostname}:27017"
           unless members.include?(host_name)
             i += 1
             available = true
             Chef::Log.info "New member found, checking availability: " + host_name
             begin
-              check = Mongo::Client.new([ "#{host}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+              check = Mongo::Client.new([ "#{host.hostname}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
               check.database_names
             rescue Mongo::Auth::Unauthorized, Mongo::Error => e
               available = false
