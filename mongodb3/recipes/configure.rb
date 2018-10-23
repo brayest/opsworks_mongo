@@ -89,7 +89,7 @@ ruby_block 'Configuring_replica_set' do
                 {
                   action: "CREATE",
                   resource_record_set: {
-                    name: "#{host_names[j]}.#{node['Domain']}",
+                    name: "#{node['HostID']}#{j}.#{node['Domain']}",
                     resource_records: [
                       {
                         value: "#{host_ips[j]}",
@@ -133,8 +133,11 @@ ruby_block 'Adding and removing members' do
         sleep(30)
         Chef::Log.info "Master member, state: " + state["myState"].to_s
         Chef::Log.info "Cluster size: " + state["members"].size.to_s
+        
         rs_new_members = []
         members = []
+        host_names = []
+        host_ips = []
         health = true
         i = 0
         for member in state["members"] do
@@ -149,6 +152,12 @@ ruby_block 'Adding and removing members' do
               check = Mongo::Client.new([ "#{member["name"]}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
               check.database_names
               rs_new_members << {"_id" => i, "host" => "#{member["name"]}"}
+              for hst in master_node_command.instances do
+                  if "#{hst.hostname}" == "#{member["name"].split(':')[0]}"
+                    host_names.push(hst.hostname)
+                    host_ips.push(hst.private_ip)
+                  end
+              end
             rescue Mongo::Auth::Unauthorized, Mongo::Error => e
               available = false
               info_string  = "Error #{e.class}: #{e.message}"
@@ -175,6 +184,9 @@ ruby_block 'Adding and removing members' do
 
             if available
               rs_new_members << {"_id" => i, "host" => host_name}
+              host_names = []
+              host_ips = []
+
               Chef::Log.info "New member added: " + host_name
               health = false
             end
