@@ -139,30 +139,29 @@ ruby_block 'Adding and removing members' do
         host_names = []
         host_ips = []
         health = true
-        i = 0
         for member in state["members"] do
           members.push("#{member["name"]}")
           if member["state"].to_i != 1 && member["health"].to_i == 0
             Chef::Log.info "Member unhealthy, deleting: " + member["name"].to_s
             health = false
           else
-            i += 1
-            Chef::Log.info "Member healthy, skipping: " + member["name"].to_s
             begin
               check = Mongo::Client.new([ "#{member["name"]}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
               check.database_names
-              rs_new_members << {"_id" => i, "host" => "#{member["name"]}"}
+              rs_new_members << {"_id" => member["_id"], "host" => "#{member["name"]}"}
+              i = member["_id"]
               master_node_command.instances.each do |hst|
                   if "#{hst.hostname}" == "#{member["name"].split(':')[0]}"
                     host_names.push(hst.hostname)
                     host_ips.push(hst.private_ip)
                   end
               end
+              Chef::Log.info "Member healthy, skipping: " + member["name"].to_s
             rescue Mongo::Auth::Unauthorized, Mongo::Error => e
               available = false
               health = false
               info_string  = "Error #{e.class}: #{e.message}"
-              Chef::Log.info "Member Unavailable: " + info_string
+              Chef::Log.info "Member Unavailable, removing: " + info_string
             end
           end
         end
