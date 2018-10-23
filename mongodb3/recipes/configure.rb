@@ -100,7 +100,7 @@ ruby_block 'Adding and removing members' do
       state = status.documents[0]
 
       if state["myState"].to_i == 1
-        sleep(120)
+        sleep(30)
         Chef::Log.info "Master member, state: " + state["myState"].to_s
         Chef::Log.info "Cluster size: " + state["members"].size.to_s
         rs_new_members = []
