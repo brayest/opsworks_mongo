@@ -45,7 +45,7 @@ ruby_block 'Configuring_replica_set' do
           rs_members << {"_id" => i, "host" => "#{host}"}
         rescue Mongo::Auth::Unauthorized, Mongo::Error => e
           info_string  = "Error #{e.class}: #{e.message}"
-          Chef::Log.info "Unable to connecto to host, node not added: " + info_string          
+          Chef::Log.info "Unable to connecto to host, node not added: " + info_string
         end
       end
     end
@@ -69,15 +69,13 @@ ruby_block 'Configuring_replica_set' do
             "_id" => "#{node['mongodb3']['config']['mongod']['replication']['replSetName']}",
             "members" => rs_members
         }
-        until configured
-          begin
-            mongo.database.command(cmd)
-            configured = true
-          rescue Mongo::Auth::Unauthorized, Mongo::Error => e
-            info_string  = "Error #{e.class}: #{e.message}"
-            Chef::Log.info "Initialization failed: " + info_string
-            sleep(60)
-          end
+        begin
+          mongo.database.command(cmd)
+          configured = true
+        rescue Mongo::Auth::Unauthorized, Mongo::Error => e
+          info_string  = "Error #{e.class}: #{e.message}"
+          Chef::Log.info "Initialization failed: " + info_string
+          sleep(60)
         end
       end
     end
