@@ -160,6 +160,7 @@ ruby_block 'Adding and removing members' do
               end
             rescue Mongo::Auth::Unauthorized, Mongo::Error => e
               available = false
+              health = false
               info_string  = "Error #{e.class}: #{e.message}"
               Chef::Log.info "Member Unavailable: " + info_string
             end
@@ -257,7 +258,7 @@ ruby_block 'Adding and removing members' do
                 },
                 hosted_zone_id: "#{node['HostedZoneId']}",
               })
-            end            
+            end
 
           rescue Mongo::Auth::Unauthorized, Mongo::Error => e
             info_string  = "Error #{e.class}: #{e.message}"
