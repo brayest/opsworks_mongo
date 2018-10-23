@@ -24,6 +24,9 @@ ruby_block 'Configuring_replica_set' do
     config = {}
     config['replSetGetConfig'] = 1
 
+    host_names = []
+    host_ips = []
+
     master_node_command = opsworks.describe_instances({
       layer_id: layer_id,
     })
@@ -43,29 +46,8 @@ ruby_block 'Configuring_replica_set' do
           check.database_names
           i += 1
           rs_members << {"_id" => i, "host" => "#{host.hostname}"}
-
-          resp = dns.change_resource_record_sets({
-            change_batch: {
-              changes: [
-                {
-                  action: "CREATE",
-                  resource_record_set: {
-                    name: "#{host.hostname}.#{node['Domain']}",
-                    resource_records: [
-                      {
-                        value: "#{host.private_ip}",
-                      },
-                    ],
-                    ttl: 60,
-                    type: "A",
-                  },
-                },
-              ],
-              comment: "Mongo service discovery for #{node['HostID']}",
-            },
-            hosted_zone_id: "#{node['HostedZoneId']}",
-          })
-
+          host_names.push(host.hostname)
+          host_ips.push(host.private_ip)
         rescue Mongo::Auth::Unauthorized, Mongo::Error => e
           info_string  = "Error #{e.class}: #{e.message}"
           Chef::Log.info "Unable to connecto to host, member not added: " + info_string
@@ -99,6 +81,31 @@ ruby_block 'Configuring_replica_set' do
             sleep(30)
           end
         end
+        
+        for j in 0..host_names.size do
+          resp = dns.change_resource_record_sets({
+            change_batch: {
+              changes: [
+                {
+                  action: "CREATE",
+                  resource_record_set: {
+                    name: "#{host_names[j]}.#{node['Domain']}",
+                    resource_records: [
+                      {
+                        value: "#{host_ips[j]}",
+                      },
+                    ],
+                    ttl: 60,
+                    type: "A",
+                  },
+                },
+              ],
+              comment: "Mongo service discovery for #{node['HostID']}",
+            },
+            hosted_zone_id: "#{node['HostedZoneId']}",
+          })
+        end
+
       end
     end
 
