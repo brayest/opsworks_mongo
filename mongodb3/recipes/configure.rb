@@ -53,7 +53,7 @@ ruby_block 'Configuring_replica_set' do
                     name: "#{host.hostname}.#{node['Domain']}",
                     resource_records: [
                       {
-                        value: "#{host.PrivateIp}",
+                        value: "#{host.private_ip}",
                       },
                     ],
                     ttl: 60,
