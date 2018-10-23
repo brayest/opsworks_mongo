@@ -133,7 +133,7 @@ ruby_block 'Adding and removing members' do
         sleep(30)
         Chef::Log.info "Master member, state: " + state["myState"].to_s
         Chef::Log.info "Cluster size: " + state["members"].size.to_s
-        
+
         rs_new_members = []
         members = []
         host_names = []
@@ -152,7 +152,7 @@ ruby_block 'Adding and removing members' do
               check = Mongo::Client.new([ "#{member["name"]}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
               check.database_names
               rs_new_members << {"_id" => i, "host" => "#{member["name"]}"}
-              for hst in master_node_command.instances do
+              master_node_command.instances.each do |hst|
                   if "#{hst.hostname}" == "#{member["name"].split(':')[0]}"
                     host_names.push(hst.hostname)
                     host_ips.push(hst.private_ip)
@@ -172,7 +172,7 @@ ruby_block 'Adding and removing members' do
           unless members.include?(host_name)
             i += 1
             available = true
-            Chef::Log.info "New member found, checking availability: " + host_name
+            Chef::Log.info "New member found, checking availability: " + host.hostname
             begin
               check = Mongo::Client.new([ "#{host.hostname}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
               check.database_names
@@ -183,11 +183,10 @@ ruby_block 'Adding and removing members' do
             end
 
             if available
-              rs_new_members << {"_id" => i, "host" => host_name}
-              host_names = []
-              host_ips = []
-
-              Chef::Log.info "New member added: " + host_name
+              rs_new_members << {"_id" => i, "host" => host.hostname}
+              host_names.push(host.hostname)
+              host_ips.push(host.private_ip)
+              Chef::Log.info "New member added: " + host.hostname
               health = false
             end
           end
@@ -207,6 +206,59 @@ ruby_block 'Adding and removing members' do
           }
           begin
             mongo.database.command(cmd)
+
+            dnsrsets = dns.list_resource_record_sets({
+              hosted_zone_id: "#{node['HostedZoneId']}",
+            })
+
+            dnsrsets.resource_record_sets.each do |old_record|
+              resp = dns.change_resource_record_sets({
+                change_batch: {
+                  changes: [
+                    {
+                      action: "DELETE",
+                      resource_record_set: {
+                        name: "#{old_record.name}",
+                        resource_records: [
+                          {
+                            value: "#{old_record.resource_records[0].value}",
+                          },
+                        ],
+                        ttl: 60,
+                        type: "A",
+                      },
+                    },
+                  ],
+                  comment: "Mongo service discovery for #{node['HostID']}",
+                },
+                hosted_zone_id: "#{node['HostedZoneId']}",
+              })
+            end
+
+            for j in 0..host_names.size-1 do
+              resp = dns.change_resource_record_sets({
+                change_batch: {
+                  changes: [
+                    {
+                      action: "CREATE",
+                      resource_record_set: {
+                        name: "#{node['HostID']}#{j}.#{node['Domain']}",
+                        resource_records: [
+                          {
+                            value: "#{host_ips[j]}",
+                          },
+                        ],
+                        ttl: 60,
+                        type: "A",
+                      },
+                    },
+                  ],
+                  comment: "Mongo service discovery for #{node['HostID']}",
+                },
+                hosted_zone_id: "#{node['HostedZoneId']}",
+              })
+            end            
+
           rescue Mongo::Auth::Unauthorized, Mongo::Error => e
             info_string  = "Error #{e.class}: #{e.message}"
             Chef::Log.info "Re-Initialization failed: " + info_string
