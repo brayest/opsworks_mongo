@@ -1,26 +1,22 @@
-package 'awscli'
 include_recipe "mongodb3::mongo_gem"
 
 require 'json'
 require 'mongo'
 require 'bson'
-require "aws-sdk-opsworks"
+require 'aws-sdk-opsworks'
+require 'aws-sdk-route53'
 
 # Obtaning mongo instnaces
 this_instance = search("aws_opsworks_instance", "self:true").first
 layer_id = this_instance["layer_ids"][0]
 mongo = Mongo::Client.new([ '127.0.0.1' ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
 opsworks = Aws::OpsWorks::Client.new(:region => "us-east-1")
+dns = Aws::Route53::Client.new(:region => "#{node['Region']}")
 
 rs_members = []
 rs_member_ips = []
-mongo_nodes = []
 i = 0
 configured = true
-
-search("aws_opsworks_instance", "layer_ids:#{layer_id}").each do |instance|
-  mongo_nodes.push(instance['hostname'])
-end
 
 ruby_block 'Configuring_replica_set' do
   block do
@@ -28,10 +24,14 @@ ruby_block 'Configuring_replica_set' do
     config = {}
     config['replSetGetConfig'] = 1
 
+    master_node_command = opsworks.describe_instances({
+      layer_id: layer_id,
+    })
+
     init_hosts = []
-    mongo_nodes.each do |host|
+    master_node_command.instances.each do |host|
       begin
-        check = Mongo::Client.new([ "#{host}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+        check = Mongo::Client.new([ "#{host.hostname}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
         check.database.command(config)
         Chef::Log.info "Configuration found"
         init_hosts.push(true)
@@ -42,10 +42,33 @@ ruby_block 'Configuring_replica_set' do
         begin
           check.database_names
           i += 1
-          rs_members << {"_id" => i, "host" => "#{host}"}
+          rs_members << {"_id" => i, "host" => "#{host.hostname}"}
+
+          resp = dns.change_resource_record_sets({
+            change_batch: {
+              changes: [
+                {
+                  action: "CREATE",
+                  resource_record_set: {
+                    name: "#{host.hostname}.#{node['Domain']}",
+                    resource_records: [
+                      {
+                        value: "#{host.PrivateIp}",
+                      },
+                    ],
+                    ttl: 60,
+                    type: "A",
+                  },
+                },
+              ],
+              comment: "Mongo service discovery for #{node['HostID']}",
+            },
+            hosted_zone_id: "#{node['HostedZoneId']}",
+          })
+
         rescue Mongo::Auth::Unauthorized, Mongo::Error => e
           info_string  = "Error #{e.class}: #{e.message}"
-          Chef::Log.info "Unable to connecto to host, node not added: " + info_string
+          Chef::Log.info "Unable to connecto to host, member not added: " + info_string
         end
       end
     end
@@ -57,9 +80,6 @@ ruby_block 'Configuring_replica_set' do
     end
 
     unless configured
-      master_node_command = opsworks.describe_instances({
-        layer_id: layer_id,
-      })
       master_node= master_node_command.instances[0].hostname
       Chef::Log.info "Checking hostname " + master_node
       if master_node == this_instance["hostname"]
@@ -87,7 +107,10 @@ end
 
 ruby_block 'Adding and removing members' do
   block do
-    Chef::Log.info "Cluster configured checkingn hosts: " + configured.to_s
+    master_node_command = opsworks.describe_instances({
+      layer_id: layer_id,
+    })
+    Chef::Log.info "Cluster configured checking hosts: " + configured.to_s
     if configured
       cmd = {}
       cmd['replSetGetStatus'] = 1
@@ -128,7 +151,7 @@ ruby_block 'Adding and removing members' do
         end
 
         Chef::Log.info "Checking for new members"
-        mongo_nodes.each do |host|
+        master_node_command.instances.each do |host|
           host_name = "#{host}:27017"
           unless members.include?(host_name)
             i += 1
