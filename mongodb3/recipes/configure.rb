@@ -19,9 +19,6 @@ i = 0
 configured = true
 
 search("aws_opsworks_instance", "layer_ids:#{layer_id}").each do |instance|
-  i += 1
-  rs_members << {"_id" => i, "host" => "#{instance['hostname']}"}
-  rs_member_ips << {"_id" => i, "host" => "#{instance['ipaddress']}"}
   mongo_nodes.push(instance['hostname'])
 end
 
@@ -42,6 +39,14 @@ ruby_block 'Configuring_replica_set' do
         info_string  = "Error #{e.class}: #{e.message}"
         Chef::Log.info "No configuration found: " + info_string
         init_hosts.push(false)
+        begin
+          check.database_names
+          i += 1
+          rs_members << {"_id" => i, "host" => "#{host}"}
+        rescue Mongo::Auth::Unauthorized, Mongo::Error => e
+          info_string  = "Error #{e.class}: #{e.message}"
+          Chef::Log.info "Unable to connecto to host, node not added: " + info_string          
+        end
       end
     end
 
