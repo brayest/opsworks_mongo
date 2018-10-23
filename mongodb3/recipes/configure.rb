@@ -213,27 +213,30 @@ ruby_block 'Adding and removing members' do
             })
 
             dnsrsets.resource_record_sets.each do |old_record|
-              resp = dns.change_resource_record_sets({
-                change_batch: {
-                  changes: [
-                    {
-                      action: "DELETE",
-                      resource_record_set: {
-                        name: "#{old_record.name}",
-                        resource_records: [
-                          {
-                            value: "#{old_record.resource_records[0].value}",
-                          },
-                        ],
-                        ttl: 60,
-                        type: "A",
+              Chef::Log.info "Removing RecordSet: " + old_record.name.to_s
+              unless "#{old_record.name}" == "mongo.internal."
+                resp = dns.change_resource_record_sets({
+                  change_batch: {
+                    changes: [
+                      {
+                        action: "DELETE",
+                        resource_record_set: {
+                          name: "#{old_record.name}",
+                          resource_records: [
+                            {
+                              value: "#{old_record.resource_records[0].value}",
+                            },
+                          ],
+                          ttl: 60,
+                          type: "A",
+                        },
                       },
-                    },
-                  ],
-                  comment: "Mongo service discovery for #{node['HostID']}",
-                },
-                hosted_zone_id: "#{node['HostedZoneId']}",
-              })
+                    ],
+                    comment: "Mongo service discovery for #{node['HostID']}",
+                  },
+                  hosted_zone_id: "#{node['HostedZoneId']}",
+                })
+              end
             end
 
             for j in 0..host_names.size-1 do
