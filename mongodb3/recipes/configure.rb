@@ -76,7 +76,7 @@ ruby_block 'Configuring_replica_set' do
           rescue Mongo::Auth::Unauthorized, Mongo::Error => e
             info_string  = "Error #{e.class}: #{e.message}"
             Chef::Log.info "Initialization failed: " + info_string
-            sleep(60)
+            sleep(30)
           end
         end
       end
@@ -85,9 +85,9 @@ ruby_block 'Configuring_replica_set' do
   end
 end
 
-
 ruby_block 'Adding and removing members' do
   block do
+    Chef::Log.info "Cluster configured checkingn hosts: " + configured.to_s
     if configured
       cmd = {}
       cmd['replSetGetStatus'] = 1
@@ -115,7 +115,15 @@ ruby_block 'Adding and removing members' do
           else
             i += 1
             Chef::Log.info "Member healthy, skipping: " + member["name"].to_s
-            rs_new_members << {"_id" => i, "host" => "#{member["name"]}"}
+            begin
+              check = Mongo::Client.new([ "#{member["name"]}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+              check.database_names
+              rs_new_members << {"_id" => i, "host" => "#{member["name"]}"}
+            rescue Mongo::Auth::Unauthorized, Mongo::Error => e
+              available = false
+              info_string  = "Error #{e.class}: #{e.message}"
+              Chef::Log.info "Member Unavailable: " + info_string
+            end
           end
         end
 
