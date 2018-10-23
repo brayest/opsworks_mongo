@@ -213,8 +213,8 @@ ruby_block 'Adding and removing members' do
             })
 
             dnsrsets.resource_record_sets.each do |old_record|
-              Chef::Log.info "Removing RecordSet: " + old_record.name.to_s
               unless "#{old_record.name}" == "mongo.internal."
+                Chef::Log.info "Removing RecordSet: " + old_record.name.to_s
                 resp = dns.change_resource_record_sets({
                   change_batch: {
                     changes: [
