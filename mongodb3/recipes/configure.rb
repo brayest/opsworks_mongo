@@ -64,11 +64,15 @@ ruby_block 'Configuring_replica_set' do
             "_id" => "#{node['mongodb3']['config']['mongod']['replication']['replSetName']}",
             "members" => rs_members
         }
-        begin
-          mongo.database.command(cmd)
-        rescue Mongo::Auth::Unauthorized, Mongo::Error => e
-          info_string  = "Error #{e.class}: #{e.message}"
-          Chef::Log.info "Initialization failed: " + info_string
+        until configured
+          begin
+            mongo.database.command(cmd)
+            configured = true
+          rescue Mongo::Auth::Unauthorized, Mongo::Error => e
+            info_string  = "Error #{e.class}: #{e.message}"
+            Chef::Log.info "Initialization failed: " + info_string
+            sleep(60)
+          end
         end
       end
     end
