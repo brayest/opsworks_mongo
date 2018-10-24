@@ -13,7 +13,18 @@ mongo = Mongo::Client.new([ '127.0.0.1' ], :database => "admin", :connect => "di
 opsworks = Aws::OpsWorks::Client.new(:region => "us-east-1")
 dns = Aws::Route53::Client.new(:region => "#{node['Region']}")
 
-ruby_block 'Removing DNS record' do
+ruby_block 'Removing Host' do
+  conf = {}
+  conf['replSetGetStatus'] = 1
+  status = mongo.database.command(conf)
+
+  if status.documents[0]["myState"].to_i == 1
+    Chef::Log.info "Master going down, stepping down"
+    cmd = {}
+    cmd['replSetStepDown'] = 60
+    stepdown = mongo.database.command(cmd)
+  end
+
   block do
     dnsrsets = dns.list_resource_record_sets({
       hosted_zone_id: "#{node['HostedZoneId']}",
