@@ -20,9 +20,7 @@ ruby_block 'Removing Host' do
 
   if status.documents[0]["myState"].to_i == 1
     Chef::Log.info "Master going down, stepping down"
-    cmd = {}
-    cmd['replSetStepDown'] = 60
-    stepdown = mongo.database.command(cmd)
+    stepdown = mongo.database.command( { replSetStepDown: 60 } )
   end
 
   block do
