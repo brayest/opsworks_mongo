@@ -14,15 +14,6 @@ opsworks = Aws::OpsWorks::Client.new(:region => "us-east-1")
 dns = Aws::Route53::Client.new(:region => "#{node['Region']}")
 
 ruby_block 'Removing Host' do
-  conf = {}
-  conf['replSetGetStatus'] = 1
-  status = mongo.database.command(conf)
-
-  if status.documents[0]["myState"].to_i == 1
-    Chef::Log.info "Master going down, stepping down"
-    mongo.database.command( { replSetStepDown: 60 } )
-  end
-
   block do
     dnsrsets = dns.list_resource_record_sets({
       hosted_zone_id: "#{node['HostedZoneId']}",
