@@ -262,6 +262,11 @@ ruby_block 'Adding and removing members' do
               end
             end
 
+            dnsrsets = dns.list_resource_record_sets({
+              hosted_zone_id: "#{node['HostedZoneId']}",
+            })
+            Chef::Log.info "RecordSets: " + dnsrsets.to_s
+
             for j in 0..host_names.size-1 do
               resp = dns.change_resource_record_sets({
                 change_batch: {
