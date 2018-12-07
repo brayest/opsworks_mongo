@@ -206,7 +206,7 @@ ruby_block 'Adding and removing members' do
               Chef::Log.info " Digits " + digits.to_s
               for x in 0..number do
                 Chef::Log.info " Number " + x.to_s
-                unless digits.include?(x)
+                unless digits.include?(x.to_s)
                   number = x
                 end
               end
