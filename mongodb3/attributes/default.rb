@@ -117,7 +117,7 @@ default['mongodb3']['config']['mongod']['processManagement']['fork'] = config_pr
 default['mongodb3']['config']['mongod']['processManagement']['pidFilePath'] = mongo_pid_file
 
 # net Options : http://docs.mongodb.org/manual/reference/configuration-options/#net-options
-default['mongodb3']['config']['mongod']['net']['port'] = 27017
+default['mongodb3']['config']['mongod']['net']['port'] = 27018
 default['mongodb3']['config']['mongod']['net']['bindIp'] = nil # default : '0.0.0.0'
 default['mongodb3']['config']['mongod']['net']['maxIncomingConnections'] = nil # default : 65536
 default['mongodb3']['config']['mongod']['net']['wireObjectCheck'] = nil # default : true

@@ -9,7 +9,7 @@ require 'aws-sdk-route53'
 # Obtaning mongo instnaces
 this_instance = search("aws_opsworks_instance", "self:true").first
 layer_id = this_instance["layer_ids"][0]
-mongo = Mongo::Client.new([ '127.0.0.1' ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+mongo = Mongo::Client.new([ "127.0.0.1:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
 opsworks = Aws::OpsWorks::Client.new(:region => "us-east-1")
 dns = Aws::Route53::Client.new(:region => "#{node['Region']}")
 
