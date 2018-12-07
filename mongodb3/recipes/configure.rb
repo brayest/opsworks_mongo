@@ -199,6 +199,7 @@ ruby_block 'Adding and removing members' do
                 letters = number.split(".")[0].split("")
                 digit = letters[letters.length-1]
                 digits.push(digit)
+                Chef::Log.info " #{number} Nnumber: " + digit
               end
 
               number = digits.size
@@ -261,11 +262,6 @@ ruby_block 'Adding and removing members' do
                 })
               end
             end
-
-            dnsrsets = dns.list_resource_record_sets({
-              hosted_zone_id: "#{node['HostedZoneId']}",
-            })
-            Chef::Log.info "RecordSets: " + dnsrsets.to_s
 
             for j in 0..host_names.size-1 do
               resp = dns.change_resource_record_sets({
