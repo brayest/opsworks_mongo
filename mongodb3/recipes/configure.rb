@@ -45,8 +45,8 @@ ruby_block 'Configuring_replica_set' do
         begin
           check.database_names
           i += 1
-          rs_members << {"_id" => i, "host" => "#{host.hostname}"}
-          host_names.push(host.hostname)
+          rs_members << {"_id" => i, "host" => "#{node['HostID']}#{i-1}.#{node['Domain']}"}
+          host_names.push("#{node['HostID']}#{i-1}.#{node['Domain']}")
           host_ips.push(host.private_ip)
         rescue Mongo::Auth::Unauthorized, Mongo::Error => e
           info_string  = "Error #{e.class}: #{e.message}"
@@ -71,16 +71,6 @@ ruby_block 'Configuring_replica_set' do
             "_id" => "#{node['mongodb3']['config']['mongod']['replication']['replSetName']}",
             "members" => rs_members
         }
-        until configured
-          begin
-            mongo.database.command(cmd)
-            configured = true
-          rescue Mongo::Auth::Unauthorized, Mongo::Error => e
-            info_string  = "Error #{e.class}: #{e.message}"
-            Chef::Log.info "Initialization failed: " + info_string
-            sleep(30)
-          end
-        end
 
         for j in 0..host_names.size-1 do
           resp = dns.change_resource_record_sets({
@@ -106,9 +96,19 @@ ruby_block 'Configuring_replica_set' do
           })
         end
 
+        until configured
+          begin
+            mongo.database.command(cmd)
+            configured = true
+          rescue Mongo::Auth::Unauthorized, Mongo::Error => e
+            info_string  = "Error #{e.class}: #{e.message}"
+            Chef::Log.info "Initialization failed: " + info_string
+            sleep(30)
+          end
+        end
+
       end
     end
-
   end
 end
 
@@ -148,14 +148,23 @@ ruby_block 'Adding and removing members' do
             begin
               check = Mongo::Client.new([ "#{member["name"]}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
               check.database_names
-              rs_new_members << {"_id" => member["_id"], "host" => "#{member["name"]}"}
+              old_member = member["name"].split(":")[0].downcase
+              rs_new_members << {"_id" => member["_id"], "host" => "#{old_member}"}
               i = member["_id"]
-              master_node_command.instances.each do |hst|
-                  if "#{hst.hostname}" == "#{member["name"].split(':')[0]}"
-                    host_names.push(hst.hostname)
-                    host_ips.push(hst.private_ip)
+
+              host_names.push("#{old_member}")
+
+              dnsrsets = dns.list_resource_record_sets({
+                hosted_zone_id: "#{node['HostedZoneId']}",
+              })
+
+              dnsrsets.resource_record_sets.each do |old_record|
+                  if "#{old_record.name}" == "#{old_member}."
+                    hst_private_ip = old_record.resource_records[0].value
+                    host_ips.push(hst_private_ip)
                   end
               end
+
               Chef::Log.info "Member healthy, skipping: " + member["name"].to_s
             rescue Mongo::Auth::Unauthorized, Mongo::Error => e
               available = false
@@ -166,15 +175,17 @@ ruby_block 'Adding and removing members' do
           end
         end
 
+        Chef::Log.info "Members healthy #{host_names.join(", ")}"
+
         Chef::Log.info "Checking for new members"
         master_node_command.instances.each do |host|
-          host_name = "#{host.hostname}:27017"
-          unless members.include?(host_name)
+          host_ip = host.private_ip
+          unless host_ips.include?(host_ip)
             i += 1
             available = true
             Chef::Log.info "New member found, checking availability: " + host.hostname
             begin
-              check = Mongo::Client.new([ "#{host.hostname}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+              check = Mongo::Client.new([ "#{host_ip}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
               check.database_names
             rescue Mongo::Auth::Unauthorized, Mongo::Error => e
               available = false
@@ -183,10 +194,24 @@ ruby_block 'Adding and removing members' do
             end
 
             if available
-              rs_new_members << {"_id" => i, "host" => host.hostname}
-              host_names.push(host.hostname)
+              digits = []
+              host_names.each do |number|
+                letters = number.split(".")[0].split("")
+                digit = letters[letters.length-1]
+                digits.push(digit)
+              end
+
+              number = digits.size
+              for x in 0..number do
+                unless digits.include?(x)
+                  number = x
+                end
+              end
+
+              rs_new_members << {"_id" => i, "host" => "#{node['HostID']}#{number}.#{node['Domain']}"}
+              host_names.push("#{node['HostID']}#{number}.#{node['Domain']}")
               host_ips.push(host.private_ip)
-              Chef::Log.info "New member added: " + host.hostname
+              Chef::Log.info "New member added: #{node['HostID']}#{number}.#{node['Domain']}"
               health = false
             end
           end
@@ -205,14 +230,13 @@ ruby_block 'Adding and removing members' do
             "members" => rs_new_members
           }
           begin
-            mongo.database.command(cmd)
 
             dnsrsets = dns.list_resource_record_sets({
               hosted_zone_id: "#{node['HostedZoneId']}",
             })
 
             dnsrsets.resource_record_sets.each do |old_record|
-              unless "#{old_record.name}" == "mongo.internal."
+              unless "#{old_record.name}" == "#{node['Domain']}."
                 Chef::Log.info "Removing RecordSet: " + old_record.name.to_s
                 resp = dns.change_resource_record_sets({
                   change_batch: {
@@ -245,7 +269,7 @@ ruby_block 'Adding and removing members' do
                     {
                       action: "CREATE",
                       resource_record_set: {
-                        name: "#{node['HostID']}#{j}.#{node['Domain']}",
+                        name: "#{host_names[j]}",
                         resource_records: [
                           {
                             value: "#{host_ips[j]}",
@@ -262,6 +286,8 @@ ruby_block 'Adding and removing members' do
               })
             end
 
+            mongo.database.command(cmd)
+
           rescue Mongo::Auth::Unauthorized, Mongo::Error => e
             info_string  = "Error #{e.class}: #{e.message}"
             Chef::Log.info "Re-Initialization failed: " + info_string
@@ -271,4 +297,32 @@ ruby_block 'Adding and removing members' do
       end
     end
   end
+end
+
+package 'awscli'
+
+cron 'backup1' do
+  action :create
+  minute '0'
+  hour '0'
+  user 'root'
+  home '/home/ubuntu'
+  command "/home/ubuntu/backup_cronjob.sh #{node['BackUpBucket']} #{node['HostID']} A"
+end
+
+cron 'backup2' do
+  action :create
+  minute '0'
+  hour '12'
+  user 'root'
+  home '/home/ubuntu'
+  command "/home/ubuntu/backup_cronjob.sh #{node['BackUpBucket']} #{node['HostID']} B"
+end
+
+cookbook_file '/home/ubuntu/backup_cronjob.sh' do
+  source 'backup_cronjob.sh'
+  owner 'root'
+  group 'root'
+  mode '0777'
+  action :create
 end

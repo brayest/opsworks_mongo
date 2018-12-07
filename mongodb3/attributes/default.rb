@@ -87,13 +87,13 @@ default['mongodb3']['keyserver'] = 'hkp://keyserver.ubuntu.com:80'
 # Also, deprecated attributed is not applied.
 
 # systemLog Options : http://docs.mongodb.org/manual/reference/configuration-options/#systemlog-options
-default['mongodb3']['config']['mongod']['systemLog']['verbosity'] = nil # default : 0
-default['mongodb3']['config']['mongod']['systemLog']['quiet'] = nil # default : false
+default['mongodb3']['config']['mongod']['systemLog']['verbosity'] = 0 # default : 0
+default['mongodb3']['config']['mongod']['systemLog']['quiet'] = true # default : false
 default['mongodb3']['config']['mongod']['systemLog']['traceAllException'] = nil # default : false
 default['mongodb3']['config']['mongod']['systemLog']['syslogFacility'] = nil # default : 'user'
 default['mongodb3']['config']['mongod']['systemLog']['path'] = '/var/log/mongodb/mongod.log'
 default['mongodb3']['config']['mongod']['systemLog']['logAppend'] = true # default : false
-default['mongodb3']['config']['mongod']['systemLog']['logRotate'] = nil # default : 'rename'
+default['mongodb3']['config']['mongod']['systemLog']['logRotate'] = 'rename' # default : 'rename'
 default['mongodb3']['config']['mongod']['systemLog']['destination'] = 'file' # default : 'file'
 default['mongodb3']['config']['mongod']['systemLog']['timeStampFormat'] = nil # default : 'iso8601-local'
 
@@ -105,7 +105,7 @@ default['mongodb3']['config']['mongod']['systemLog']['component']['geo']['verbos
 default['mongodb3']['config']['mongod']['systemLog']['component']['index']['verbosity'] = nil # default : 0
 default['mongodb3']['config']['mongod']['systemLog']['component']['network']['verbosity'] = nil # default : 0
 default['mongodb3']['config']['mongod']['systemLog']['component']['query']['verbosity'] = nil # default : 0
-default['mongodb3']['config']['mongod']['systemLog']['component']['replication']['verbosity'] = nil # default : 0
+default['mongodb3']['config']['mongod']['systemLog']['component']['replication']['verbosity'] = 3 # default : 0
 default['mongodb3']['config']['mongod']['systemLog']['component']['sharding']['verbosity'] = nil # default : 0
 default['mongodb3']['config']['mongod']['systemLog']['component']['storage']['verbosity'] = nil # default : 0
 default['mongodb3']['config']['mongod']['systemLog']['component']['storage']['journal']['verbosity'] = nil # default : 0

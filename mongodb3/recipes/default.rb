@@ -19,6 +19,8 @@
 
 include_recipe 'mongodb3::package_repo'
 
+this_instance = search("aws_opsworks_instance", "self:true").first
+
 # Install MongoDB package
 install_package = %w(mongodb-org-server mongodb-org-shell mongodb-org-tools)
 
@@ -109,6 +111,49 @@ case node['platform']
         }
       end
     end
+end
+
+directory '/tmp/ssm' do
+  owner 'root'
+  group 'root'
+  mode '0755'
+  action :create
+end
+
+remote_file '/tmp/ssm/amazon-cloudwatch-agent.deb' do
+  source 'https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb'
+  owner 'root'
+  group 'root'
+  mode '0755'
+  action :create
+end
+
+dpkg_package 'amazon-cloudwatch-agent.deb' do
+  source '/tmp/ssm/amazon-cloudwatch-agent.deb'
+  action :install
+end
+
+cookbook_file '/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json' do
+  source 'amazon-cloudwatch-agent.json'
+  owner 'root'
+  group 'root'
+  mode '0777'
+  action :create
+end
+
+execute 'configure_logs' do
+  command "sed -i 's/HOSTINSTNANCE/#{this_instance["hostname"]}/g' /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
+  action :run
+end
+
+execute 'configure_cw_agent' do
+  command "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s"
+  action :run
+end
+
+service 'amazon-cloudwatch-agent' do
+  supports status: true
+  action [:enable, :start]
 end
 
 service 'disable-transparent-hugepages' do
