@@ -1,0 +1,309 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Opsworks Stack (Mongo Cluster)"
+
+Parameters:
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnet-IDs the existing subnets in your VPC where you want to deploy node(s).
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+  DefaultSubnet:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet-ID the existing subnet in your VPC where you want to deploy Primary node(s).
+    Default: subnet-04fa611a94854723c
+  StackName:
+    Type: String
+  DefaultAvailabilityZone:
+    Description: "List of Availability Zones to use for the subnets in the VPC. Note: The logical order is preserved."
+    Type: AWS::EC2::AvailabilityZone::Name
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC-ID of your existing Virtual Private Cloud (VPC) where you want to depoy MongoDB cluster.
+  ReplicaSetName:
+    Type: String
+    Description: Name for replica cluster.
+  Domain:
+    Type: String
+    Default: mongo-calhoun.int
+    Description: Domain for internal connections.
+  BackUpBucket:
+    Type: String
+    Description: Backup S3 Bucket
+
+
+Resources:
+
+  SecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Allow tcp to client host
+        VpcId: !Ref VpcId
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '0'
+          ToPort: '65535'
+          CidrIp: 0.0.0.0/0
+        SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+
+  OpsworksEc2Profile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref OpsworksEc2Role
+
+  OpsworksEc2Role:
+      Type: AWS::IAM::Role
+      Properties:
+          RoleName: !Sub ${StackName}-OpsWorks-${AWS::Region}
+          ManagedPolicyArns: [
+              "arn:aws:iam::aws:policy/CloudWatchLogsFullAccess",
+              "arn:aws:iam::aws:policy/service-role/AWSOpsWorksRole",
+              "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
+              "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM"
+            ]
+          Path: /
+          AssumeRolePolicyDocument:
+            {
+              "Version": "2008-10-17",
+              "Statement": [
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "ec2.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }
+          Policies:
+              - PolicyName: AWSEC2ALBAccessPolicy
+                PolicyDocument:
+                  {
+                      "Version": "2012-10-17",
+                      "Statement": [
+                          {
+                              "Action": [
+                                  "elasticloadbalancing:RegisterTargets",
+                                  "elasticloadbalancing:DeregisterTargets",
+                                  "elasticloadbalancing:DescribeTargetHealth"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": "*"
+                          }
+                      ]
+                  }
+              - PolicyName: Assosiate_disassosiate_eip
+                PolicyDocument:
+                  {
+                      "Version": "2012-10-17",
+                      "Statement": [
+                          {
+                              "Sid": "Stmt1459286115000",
+                              "Effect": "Allow",
+                              "Action": [
+                                  "ec2:AssociateAddress",
+                                  "ec2:DisassociateAddress"
+                              ],
+                              "Resource": [
+                                  "*"
+                              ]
+                          }
+                      ]
+                  }
+              - PolicyName: OpsWorkAccess
+                PolicyDocument:
+                  {
+                      "Version": "2012-10-17",
+                      "Statement": [
+                          {
+                              "Sid": "Stmt1457559126000",
+                              "Effect": "Allow",
+                              "Action": [
+                                  "opsworks:CreateDeployment",
+                                  "opsworks:DescribeDeployments"
+                              ],
+                              "Resource": [
+                                  "*"
+                              ]
+                          },
+                          {
+                              "Sid": "Stmt1457559165000",
+                              "Effect": "Allow",
+                              "Action": [
+                                  "opsworks:DescribeApps",
+                                  "opsworks:DescribeCommands",
+                                  "opsworks:DescribeDeployments",
+                                  "opsworks:DescribeElasticIps",
+                                  "opsworks:DescribeElasticLoadBalancers",
+                                  "opsworks:DescribeInstances",
+                                  "opsworks:DescribeLayers",
+                                  "opsworks:DescribeLoadBasedAutoScaling",
+                                  "opsworks:DescribePermissions",
+                                  "opsworks:DescribeStacks",
+                                  "opsworks:DescribeTimeBasedAutoScaling",
+                                  "opsworks:DescribeUserProfiles",
+                                  "opsworks:DescribeVolumes",
+                                  "opsworks:RegisterElasticIp",
+                                  "opsworks:SetLoadBasedAutoScaling",
+                                  "opsworks:SetTimeBasedAutoScaling",
+                                  "opsworks:UpdateApp",
+                                  "opsworks:UpdateElasticIp",
+                                  "opsworks:UpdateInstance",
+                                  "opsworks:UpdateLayer",
+                                  "opsworks:UpdateStack",
+                                  "s3:PutObject",
+                                  "s3:AbortMultipartUpload",
+                                  "s3:ListMultipartUploadParts",
+                                  "s3:ListBucket",
+                                  "s3:GetBucketLocation",
+                                  "s3:ListBucketMultipartUploads",
+                                  "s3:ListBucketVersions",
+                                  "s3:DeleteObject",
+                                  "cloudformation:ListStacks",
+                                  "cloudformation:CreateStack",
+                                  "cloudformation:DeleteStack",
+                                  "cloudformation:UpdateStack",
+                                  "cloudformation:DescribeStacks",
+                                  "cloudformation:ListStackResources",
+                                  "route53:CreateHostedZone",
+                                  "route53:GetHostedZone",
+                                  "route53:ListHostedZones",
+                                  "route53:ChangeResourceRecordSets",
+                                  "route53:ListResourceRecordSets",
+                                  "route53:DeleteHostedZone",
+                                  "route53:GetChange",
+                                  "cloudwatch:SetAlarmState"
+                              ],
+                              "Resource": [
+                                  "*"
+                              ]
+                          }
+                      ]
+                  }
+
+  OpsworksRole:
+      Type: AWS::IAM::Role
+      Properties:
+          RoleName: !Sub ${StackName}-OpsWorksRole-${AWS::Region}
+          Path: /
+          AssumeRolePolicyDocument:
+            {
+              "Version": "2008-10-17",
+              "Statement": [
+                {
+                  "Sid": "",
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "opsworks.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }
+          Policies:
+              - PolicyName: AWSOpsWorksServiceRole
+                PolicyDocument:
+                  {
+                      "Statement": [
+                          {
+                              "Action": [
+                                  "ec2:*",
+                                  "iam:PassRole",
+                                  "cloudwatch:GetMetricStatistics",
+                                  "cloudwatch:DescribeAlarms",
+                                  "ecs:*",
+                                  "elasticloadbalancing:*",
+                                  "rds:*"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": [
+                                  "*"
+                              ]
+                          }
+                      ]
+                  }
+
+  OpsWorksStack:
+    Type: AWS::OpsWorks::Stack
+    Properties:
+      Name: !Sub ${StackName}
+      ServiceRoleArn: !GetAtt OpsworksRole.Arn
+      DefaultInstanceProfileArn: !GetAtt OpsworksEc2Profile.Arn
+      DefaultSshKeyName: !Ref KeyName
+      DefaultOs: Ubuntu 16.04 LTS
+      DefaultRootDeviceType: ebs
+      VpcId: !Ref VpcId
+      DefaultSubnetId: !Ref DefaultSubnet
+      UseCustomCookbooks: true
+      CustomJson: !Sub |
+          {
+            "mongodb3": {
+              "config":{
+                 "mongod":{
+                    "net": {
+                      "bindIp": "0.0.0.0"
+                      },
+                    "storage":{
+                      "dbPath": "/data"
+                      },
+                    "replication":{
+                      "replSetName": "${ReplicaSetName}"
+                      }
+                    }
+                }
+              },
+            "Domain": "${Domain}",
+            "Region": "${AWS::Region}",
+            "HostedZoneId": "${DomainDNS}",
+            "BackUpBucket": "${BackUpBucket}"
+          }
+      UseOpsworksSecurityGroups: false
+      CustomCookbooksSource:
+        Type: git
+        Url: "https://github.com/brayest/opsworks_mongo.git"
+      ConfigurationManager:
+        Name: Chef
+        Version: 12
+
+  DomainDNS:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: "Internal Hosted Zone"
+      Name: !Ref Domain
+      VPCs:
+        - VPCId: !Ref VpcId
+          VPCRegion: !Ref "AWS::Region"
+
+  Calhoun:
+    Type: AWS::OpsWorks::Layer
+    Properties:
+      StackId: !Ref OpsWorksStack
+      Name: "Calhoun"
+      Type: custom
+      Shortname: "mongo"
+      VolumeConfigurations:
+        - MountPoint: /data
+          NumberOfDisks: 1
+          Size: 500
+          VolumeType: gp2
+      EnableAutoHealing: false
+      AutoAssignElasticIps: false
+      AutoAssignPublicIps: false
+      CustomRecipes:
+        Setup:
+          - mongodb3::default
+        Configure:
+          - mongodb3::configure
+        Shutdown:
+          - mongodb3::shutdown
+      CustomSecurityGroupIds:
+        - !Ref SecurityGroup
+      CustomJson: !Sub |
+          {
+            "HostID": "monogo"
+          }
