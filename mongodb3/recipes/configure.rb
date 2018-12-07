@@ -199,19 +199,19 @@ ruby_block 'Adding and removing members' do
                 letters = number.split(".")[0].split("")
                 digit = letters[letters.length-1]
                 digits.push(digit)
-                Chef::Log.info " #{number} Nnumber: " + digit
+                Chef::Log.info " #{number} Nnumber: " + digit.to_s
               end
 
               number = digits.size
-              Chef::Log.info " Digits " + digits
+              Chef::Log.info " Digits " + digits.to_s
               for x in 0..number do
-                Chef::Log.info " Number " + x
+                Chef::Log.info " Number " + x.to_s
                 unless digits.include?(x)
                   number = x
                 end
               end
 
-              Chef::Log.info " Number " + x
+              Chef::Log.info " Number " + x.to_s
 
               rs_new_members << {"_id" => i, "host" => "#{node['HostID']}#{number}.#{node['Domain']}:#{node['mongodb3']['config']['mongod']['net']['port']}"}
               host_names.push("#{node['HostID']}#{number}.#{node['Domain']}")
