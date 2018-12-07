@@ -45,7 +45,7 @@ ruby_block 'Configuring_replica_set' do
         begin
           check.database_names
           i += 1
-          rs_members << {"_id" => i, "host" => "#{node['HostID']}#{i-1}.#{node['Domain']}"}
+          rs_members << {"_id" => i, "host" => "#{node['HostID']}#{i-1}.#{node['Domain']}:#{node['mongodb3']['config']['mongod']['net']['port']}"}
           host_names.push("#{node['HostID']}#{i-1}.#{node['Domain']}")
           host_ips.push(host.private_ip)
         rescue Mongo::Auth::Unauthorized, Mongo::Error => e
@@ -208,7 +208,7 @@ ruby_block 'Adding and removing members' do
                 end
               end
 
-              rs_new_members << {"_id" => i, "host" => "#{node['HostID']}#{number}.#{node['Domain']}"}
+              rs_new_members << {"_id" => i, "host" => "#{node['HostID']}#{number}.#{node['Domain']}:#{node['mongodb3']['config']['mongod']['net']['port']}"}
               host_names.push("#{node['HostID']}#{number}.#{node['Domain']}")
               host_ips.push(host.private_ip)
               Chef::Log.info "New member added: #{node['HostID']}#{number}.#{node['Domain']}"

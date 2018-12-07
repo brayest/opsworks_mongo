@@ -24,7 +24,7 @@ Parameters:
     Description: Name for replica cluster.
   Domain:
     Type: String
-    Default: mongo-calhoun.int
+    Default: mongo.int
     Description: Domain for internal connections.
   BackUpBucket:
     Type: String
