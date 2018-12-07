@@ -203,11 +203,15 @@ ruby_block 'Adding and removing members' do
               end
 
               number = digits.size
+              Chef::Log.info " Digits " + digits
               for x in 0..number do
+                Chef::Log.info " Number " + x
                 unless digits.include?(x)
                   number = x
                 end
               end
+
+              Chef::Log.info " Number " + x
 
               rs_new_members << {"_id" => i, "host" => "#{node['HostID']}#{number}.#{node['Domain']}:#{node['mongodb3']['config']['mongod']['net']['port']}"}
               host_names.push("#{node['HostID']}#{number}.#{node['Domain']}")
