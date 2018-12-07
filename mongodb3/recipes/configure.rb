@@ -149,7 +149,7 @@ ruby_block 'Adding and removing members' do
               check = Mongo::Client.new([ "#{member["name"]}:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
               check.database_names
               old_member = member["name"].split(":")[0].downcase
-              rs_new_members << {"_id" => member["_id"], "host" => "#{old_member}"}
+              rs_new_members << {"_id" => member["_id"], "host" => "#{old_member}:#{node['mongodb3']['config']['mongod']['net']['port']}"}
               i = member["_id"]
 
               host_names.push("#{old_member}")
