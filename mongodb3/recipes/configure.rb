@@ -5,11 +5,31 @@ require 'mongo'
 require 'bson'
 require 'aws-sdk-opsworks'
 require 'aws-sdk-route53'
+require 'aws-sdk-ssm'
 
 # Obtaning mongo instnaces
 this_instance = search("aws_opsworks_instance", "self:true").first
 layer_id = this_instance["layer_ids"][0]
-mongo = Mongo::Client.new([ "127.0.0.1:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+
+ssm = Aws::SSM::Client.new(:region => "#{node['Region']}")
+userParam = ssm.get_parameter({
+    name: "#{node['DBUser']}",
+    with_decryption: false
+})
+user = userParam[:parameter][:value]
+passwordParam = ssm.get_parameter({
+    name: "#{node['DBPassword']}",
+    with_decryption: false
+})
+password = passwordParam[:parameter][:value]
+
+begin
+  mongo = Mongo::Client.new([ "127.0.0.1:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :user => user, :password => password, :connect => "direct", :server_selection_timeout => 5)
+  mongo.database_names
+rescue
+  mongo = Mongo::Client.new([ "127.0.0.1:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+end
+
 opsworks = Aws::OpsWorks::Client.new(:region => "us-east-1")
 dns = Aws::Route53::Client.new(:region => "#{node['Region']}")
 
@@ -34,7 +54,12 @@ ruby_block 'Configuring_replica_set' do
     init_hosts = []
     master_node_command.instances.each do |host|
       begin
-        check = Mongo::Client.new([ "#{host.hostname}:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+        begin
+          check = Mongo::Client.new([ "127.0.0.1:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :user => user, :password => password, :connect => "direct", :server_selection_timeout => 5)
+          check.database_names
+        rescue
+          check = Mongo::Client.new([ "127.0.0.1:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+        end
         check.database.command(config)
         Chef::Log.info "Configuration found"
         init_hosts.push(true)
@@ -146,8 +171,13 @@ ruby_block 'Adding and removing members' do
             health = false
           else
             begin
-              check = Mongo::Client.new([ "#{member["name"]}:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
-              check.database_names
+              begin
+                check = Mongo::Client.new([ "#{member["name"]}:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :user => user, :password => password, :connect => "direct", :server_selection_timeout => 5)
+                check.database_names
+              rescue
+                check = Mongo::Client.new([ "#{member["name"]}:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+                check.database_names
+              end
               old_member = member["name"].split(":")[0].downcase
               rs_new_members << {"_id" => member["_id"], "host" => "#{old_member}:#{node['mongodb3']['config']['mongod']['net']['port']}"}
               i = member["_id"]
@@ -184,9 +214,13 @@ ruby_block 'Adding and removing members' do
             i += 1
             available = true
             Chef::Log.info "New member found, checking availability: " + host.hostname
+            
             begin
-              check = Mongo::Client.new([ "#{host_ip}:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
-              check.database_names
+              begin
+                check = Mongo::Client.new([ "#{host_ip}:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :user => user, :password => password, :connect => "direct", :server_selection_timeout => 5)
+              rescue
+                check = Mongo::Client.new([ "#{host_ip}:#{node['mongodb3']['config']['mongod']['net']['port']}" ], :database => "admin", :connect => "direct", :server_selection_timeout => 5)
+              end
             rescue Mongo::Auth::Unauthorized, Mongo::Error => e
               available = false
               info_string  = "Error #{e.class}: #{e.message}"
@@ -330,4 +364,72 @@ cookbook_file '/home/ubuntu/backup_cronjob.sh' do
   group 'root'
   mode '0777'
   action :create
+end
+
+# Key file contents
+node.default['mongodb3']['config']['key_file_content'] = 'n/XmT8wIOmKSwVqV5UPUcEf23ugCoL6uRVV0C2u9Ilg0+pb2SfS5vWYvXY7UhL6J
+/+orKuREnH9gHSmsgEIPSEMKopGTwsoXpPXW1jWH9TzFt4z8PL81z+/Qz+GuZOWN
++KMWltIua0EbfLEUw4sZb3xNT33EHjmbbDJWmVO2ngTr2zCb2Xubc0DvoTs2rTMe
+hd/PkkqumLTJINRa4JP7i12cyldhbKWRk9ROVmVoyoyMhrXR38rwvMiD+4SJamtM
+YDB3dktD22J2g/QMwrJtdM1GI3o2PwYeKA1v16OY/oqI7bJ77wdin6MKpYUTyenS
+kDwU8pJwSbgMJ1i58EcokC1dyom1Lq9eIrjREpAovV837tZxylTEiAZAxbR7yHfD
+6+uN+aN8BftMZK7nCe7hvJjlX7mt0P9fovJ5rrl22eR88O93yPV4vNdkQojTXJd+
+M9mZNUOeYOWCa3E1XUN6USzI+XHZeVDfjxPT98GVdR+KwpTNUPLRp9lI020rAzRO
+LX4Wi5/0rW5SETUqFRX+iIf7zdx/+7nuMI7FZsBGErdc6Oc1bvNlWw8xpVOtBTT8
+0+DBG+uYX8isby7OXRDuXmNEDUJWBWmafsoX7cQ+687M1TryP9BOAcLZEkBmgIRC
+D3u2uaXIqlkB8k/01dYS2TTUO1xbtbNmu3JaDJ5EtyPwUGTXD2mKsTYgzxRuQI5b
+Y5PBH/n4ZL+CCmf0AVkZARGbm4yQvtT3cmIIyl01Fgm+6IcCTU6RwTdWkO+lypaq
+zRwAeOaVtNMdON5nPF2h42yE6dkUBhxz3dXTcaC/0HjrYd2HKc0NDicOYTj744rK
+6TrsywfMTJO9ZIQY6aKg8UXwYShqSEjWFMfwYLQi+S+efvvCqMnYWWNAGEF/xQBX
+V12wd9ACwNez3e3w9LWxe2/gR8QBO/7zL5P4u7wTiu3OMH7Nyo008JoBRbWARu7t
+pK/oM7oIKC7tb4Redd7EYIdLdFZIuMuqN/sYQxF31EDoI+I8'
+
+# security Options : http://docs.mongodb.org/manual/reference/configuration-options/#security-options
+node.default['mongodb3']['config']['mongod']['security']['keyFile'] = '/var/lib/keyfile'
+node.default['mongodb3']['config']['mongod']['security']['clusterAuthMode'] = 'keyFile'
+
+# Update the mongodb config file
+template node['mongodb3']['mongod']['config_file'] do
+  source 'mongodb.conf.erb'
+  mode 0644
+  variables(
+      :config => node['mongodb3']['config']['mongod']
+  )
+  helpers Mongodb3Helper
+end
+
+unless node['mongodb3']['config']['key_file_content'].to_s.empty?
+  # Create the key file if it is not exist
+  key_file = node['mongodb3']['config']['mongod']['security']['keyFile']
+
+  # Create the directory for key file
+  directory File.dirname(key_file).to_s do
+    action :create
+    owner node['mongodb3']['user']
+    group node['mongodb3']['group']
+    recursive true
+  end
+
+  file key_file do
+    content node['mongodb3']['config']['key_file_content']
+    mode '0600'
+    owner node['mongodb3']['user']
+    group node['mongodb3']['group']
+  end
+end
+
+# Restart the mongod service
+service 'mongod' do
+  case node['platform']
+    when 'ubuntu'
+      if node['platform_version'].to_f >= 15.04
+        provider Chef::Provider::Service::Systemd
+      elsif node['platform_version'].to_f >= 14.04
+        provider Chef::Provider::Service::Upstart
+      end
+  end
+  supports :start => true, :stop => true, :restart => true, :status => true
+  action :enable
+  subscribes :restart, "template[#{node['mongodb3']['mongod']['config_file']}]", :delayed
+  subscribes :restart, "template[#{node['mongodb3']['config']['mongod']['security']['keyFile']}", :delayed
 end
