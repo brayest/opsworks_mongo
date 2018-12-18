@@ -29,6 +29,12 @@ Parameters:
   BackUpBucket:
     Type: String
     Description: Backup S3 Bucket
+  DBUserParameter:
+    Type: String
+    Description: Name of the Parameter Store variable that containes the DB Admin User. Should be on the same AWS Region with this Stack.
+  DBPasswordParameter:
+    Type: String
+    Description: Name of the Parameter Store variable that containes the DB Admin Password. Should be on the same AWS Region with this Stack.
 
 
 Resources:
@@ -176,7 +182,8 @@ Resources:
                                   "route53:ListResourceRecordSets",
                                   "route53:DeleteHostedZone",
                                   "route53:GetChange",
-                                  "cloudwatch:SetAlarmState"
+                                  "cloudwatch:SetAlarmState",
+                                  "ssm:GetParameter"
                               ],
                               "Resource": [
                                   "*"
@@ -259,7 +266,9 @@ Resources:
             "Domain": "${Domain}",
             "Region": "${AWS::Region}",
             "HostedZoneId": "${DomainDNS}",
-            "BackUpBucket": "${BackUpBucket}"
+            "BackUpBucket": "${BackUpBucket}",
+            "DBUser": "${DBUserParameter}",
+            "DBPassword": "${DBPasswordParameter}"
           }
       UseOpsworksSecurityGroups: false
       CustomCookbooksSource:
@@ -299,6 +308,7 @@ Resources:
           - mongodb3::default
         Configure:
           - mongodb3::configure
+          - mongodb3::users
         Shutdown:
           - mongodb3::shutdown
       CustomSecurityGroupIds:
