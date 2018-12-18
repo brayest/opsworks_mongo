@@ -29,15 +29,30 @@ Parameters:
   BackUpBucket:
     Type: String
     Description: Backup S3 Bucket
-  DBUserParameter:
+  DBUser:
     Type: String
-    Description: Name of the Parameter Store variable that containes the DB Admin User. Should be on the same AWS Region with this Stack.
-  DBPasswordParameter:
+    Description: Admin User Name
+  DBPassword:
     Type: String
-    Description: Name of the Parameter Store variable that containes the DB Admin Password. Should be on the same AWS Region with this Stack.
+    Description: Password for Admin User
 
 
 Resources:
+  DBUserParameter:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: !Sub ${StackName}-MongoDBUser
+      Type: "String"
+      Value: !Ref DBUser
+      Description: "Admin User to connect to MongoDB"
+
+  DBPasswordParameter:
+    Type: "AWS::SSM::Parameter"
+    Properties:
+      Name: !Sub ${StackName}-MongoDBPassword
+      Type: "String"
+      Value: !Ref DBPassword
+      Description: "Password for Admin User to connect to MongoDB"
 
   SecurityGroup:
       Type: AWS::EC2::SecurityGroup
