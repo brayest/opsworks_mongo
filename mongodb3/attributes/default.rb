@@ -76,22 +76,6 @@ default['mongodb3']['mongos']['runit_template_cookbook'] = 'mongodb3'
 
 # Key file contents
 default['mongodb3']['config']['key_file_content'] = nil
-# 'n/XmT8wIOmKSwVqV5UPUcEf23ugCoL6uRVV0C2u9Ilg0+pb2SfS5vWYvXY7UhL6J
-# /+orKuREnH9gHSmsgEIPSEMKopGTwsoXpPXW1jWH9TzFt4z8PL81z+/Qz+GuZOWN
-# +KMWltIua0EbfLEUw4sZb3xNT33EHjmbbDJWmVO2ngTr2zCb2Xubc0DvoTs2rTMe
-# hd/PkkqumLTJINRa4JP7i12cyldhbKWRk9ROVmVoyoyMhrXR38rwvMiD+4SJamtM
-# YDB3dktD22J2g/QMwrJtdM1GI3o2PwYeKA1v16OY/oqI7bJ77wdin6MKpYUTyenS
-# kDwU8pJwSbgMJ1i58EcokC1dyom1Lq9eIrjREpAovV837tZxylTEiAZAxbR7yHfD
-# 6+uN+aN8BftMZK7nCe7hvJjlX7mt0P9fovJ5rrl22eR88O93yPV4vNdkQojTXJd+
-# M9mZNUOeYOWCa3E1XUN6USzI+XHZeVDfjxPT98GVdR+KwpTNUPLRp9lI020rAzRO
-# LX4Wi5/0rW5SETUqFRX+iIf7zdx/+7nuMI7FZsBGErdc6Oc1bvNlWw8xpVOtBTT8
-# 0+DBG+uYX8isby7OXRDuXmNEDUJWBWmafsoX7cQ+687M1TryP9BOAcLZEkBmgIRC
-# D3u2uaXIqlkB8k/01dYS2TTUO1xbtbNmu3JaDJ5EtyPwUGTXD2mKsTYgzxRuQI5b
-# Y5PBH/n4ZL+CCmf0AVkZARGbm4yQvtT3cmIIyl01Fgm+6IcCTU6RwTdWkO+lypaq
-# zRwAeOaVtNMdON5nPF2h42yE6dkUBhxz3dXTcaC/0HjrYd2HKc0NDicOYTj744rK
-# 6TrsywfMTJO9ZIQY6aKg8UXwYShqSEjWFMfwYLQi+S+efvvCqMnYWWNAGEF/xQBX
-# V12wd9ACwNez3e3w9LWxe2/gR8QBO/7zL5P4u7wTiu3OMH7Nyo008JoBRbWARu7t
-# pK/oM7oIKC7tb4Redd7EYIdLdFZIuMuqN/sYQxF31EDoI+I8'
 
 # Key server
 default['mongodb3']['keyserver'] = 'hkp://keyserver.ubuntu.com:80'

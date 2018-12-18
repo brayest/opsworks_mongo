@@ -273,7 +273,7 @@ Resources:
       UseOpsworksSecurityGroups: false
       CustomCookbooksSource:
         Type: git
-        Url: "https://github.com/HugoOrozco/opsworks_mongo.git"
+        Url: "https://github.com/brayest/opsworks_mongo.git"
       ConfigurationManager:
         Name: Chef
         Version: 12
@@ -307,8 +307,8 @@ Resources:
         Setup:
           - mongodb3::default
         Configure:
-          - mongodb3::users
           - mongodb3::configure
+          - mongodb3::users
         Shutdown:
           - mongodb3::shutdown
       CustomSecurityGroupIds:
