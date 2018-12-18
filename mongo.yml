@@ -288,7 +288,7 @@ Resources:
       UseOpsworksSecurityGroups: false
       CustomCookbooksSource:
         Type: git
-        Url: "https://github.com/HugoOrozco/opsworks_mongo.git"
+        Url: "https://github.com/brayest/opsworks_mongo.git"
       ConfigurationManager:
         Name: Chef
         Version: 12
