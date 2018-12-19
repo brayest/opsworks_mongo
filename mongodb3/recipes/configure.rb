@@ -323,8 +323,22 @@ ruby_block 'Adding and removing members' do
                 },
                 hosted_zone_id: "#{node['HostedZoneId']}",
               })
-            end
+            
+              dnsid = resp[:change_info][:id]
+              dnsready = false
 
+              until dnsready
+                change = dns.get_change({ id: dnsid })
+                status = change[:change_info][:status]
+                if status == "INSYNC"
+                  dnsready = true
+                else
+                  Chef::Log::info "Host not propagated on DNS, retrying in 15 seconds"
+                  sleep(15)
+                end
+              end
+            end
+            
             mongo.database.command(cmd)
 
           rescue Mongo::Auth::Unauthorized, Mongo::Error => e
