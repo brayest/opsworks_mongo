@@ -18,6 +18,8 @@
 
 ### Contributors
 
+* Brayan Lemus - [@brayest](https://github.com/brayest/)
+* Braulio Padilla - [@padillabraulio](https://github.com/PadillaBraulio)
 * David Herges - [@dherges](https://github.com/dherges)
 * Joe Passavanti - [@gottaloveit](https://github.com/gottaloveit)
 * MEGA MOnolithic meTHod - [@megamoth](https://github.com/megamoth)
